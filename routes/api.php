@@ -3,6 +3,8 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CategoriesController;
+use App\Http\Controllers\UnitsController;
+use App\Http\Controllers\ProductsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,5 +21,26 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::get('/categories', [CategoriesController::class, 'index']);
-Route::post('/categories/post', [CategoriesController::class, 'store']);
+Route::controller(CategoriesController::class)->group(function () {
+    Route::get('/categories', 'index');
+    Route::post('/categories/post', 'store');
+    Route::get('/categories/details/{id}', 'show');
+    Route::post('/categories/update/{id}', 'update');
+    Route::get('/categories/delete/{id}', 'destroy');
+});
+
+Route::controller(UnitsController::class)->group(function () {
+    Route::get('/units', 'index');
+    Route::post('/units/post', 'store');
+    Route::get('/units/details/{id}', 'show');
+    Route::post('/units/update/{id}', 'update');
+    Route::get('/units/delete/{id}', 'destroy');
+});
+
+Route::controller(ProductsController::class)->group(function () {
+    Route::get('/products', 'index');
+    Route::post('/products/post', 'store');
+    Route::get('/products/details/{id}', 'show');
+    Route::post('/products/update/{id}', 'update');
+    Route::get('/products/delete/{id}', 'destroy');
+});

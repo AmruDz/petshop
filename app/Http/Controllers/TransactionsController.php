@@ -12,7 +12,8 @@ class TransactionsController extends Controller
      */
     public function index()
     {
-        //
+        $data = Transactions::all();
+        return response()->json($data);
     }
 
     /**
@@ -34,9 +35,10 @@ class TransactionsController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Transactions $transactions)
+    public function show($id)
     {
-        //
+        $data = Transactions::findOrfail($id);
+        return response()->json($data);
     }
 
     /**
