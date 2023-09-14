@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Products;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -19,7 +20,7 @@ class ProductsController extends Controller
         $data = Products::all();
 
         foreach ($data as $product) {
-            $product->image = Storage::disk('products')->url("image/{$product->image}");
+            $product->image = Storage::disk('products')->url("{$product->image}");
         }
         return response()->json($data);
     }
@@ -33,7 +34,7 @@ class ProductsController extends Controller
     }
 
 
-    public function store(Request $request):RedirectResponse
+    public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'category_id' => 'required',
@@ -50,7 +51,8 @@ class ProductsController extends Controller
         if ($request->hasFile('image')) {
             $file = $request->file('image');
             $fileName = uniqid() . '.' . $file->getClientOriginalExtension();
-            Storage::disk('products')->putFileAs($fileName, File::get($file));
+            Storage::disk('products')->putFileAs('', $file, $fileName);
+            $validator['image'] = $fileName;
         }
 
         $product = Products::create($validator);
