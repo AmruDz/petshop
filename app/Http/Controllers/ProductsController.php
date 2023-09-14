@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Products;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class ProductsController extends Controller
 {
@@ -14,23 +17,25 @@ class ProductsController extends Controller
     public function index()
     {
         $data = Products::all();
+
+        foreach ($data as $product) {
+            $product->image = Storage::disk('products')->url("image/{$product->image}");
+        }
         return response()->json($data);
     }
-
     /**
      * Show the form for creating a new resource.
      */
     public function create()
     {
         //
+
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+
+    public function store(Request $request):RedirectResponse
     {
-        $validatedData = $request->validate([
+        $validator = Validator::make($request->all(), [
             'category_id' => 'required',
             'unit_id' => 'required',
             'name' => 'required',
@@ -40,26 +45,15 @@ class ProductsController extends Controller
             'is_discount_active' => 'boolean',
             'is_discount_percentage' => 'boolean',
             'discount' => 'required',
-        ]);
+        ])->validate();
 
-        // $products = Products::create([
-        //     'category_id' => $validatedData['category_id'],
-        //     'unit_id' => $validatedData['unit_id'],
-        //     'name' => $validatedData['name'],
-        //     'image' => $validatedData['image'],
-        //     'qty' => $validatedData['qty'],
-        //     'price' => $validatedData['price'],
-        //     'is_discount_active' => $validatedData['is_discount_active'],
-        //     'is_discount_percentage' => $validatedData['is_discount_percentage'],
-        //     'discount' => $validatedData['discount'],
-        // ]);
+        if ($request->hasFile('image')) {
+            $file = $request->file('image');
+            $fileName = uniqid() . '.' . $file->getClientOriginalExtension();
+            Storage::disk('products')->putFileAs($fileName, File::get($file));
+        }
 
-        $file = $request->file('image');
-        $fileName = uniqid() . '.' . $file->getClientOriginalExtension();
-        $file->storeAs('public/image/', $fileName);
-        $validatedData['image'] = $fileName;
-
-        $product = Products::create($validatedData);
+        $product = Products::create($validator);
 
         return response()->json([
             'message' => 'Product created successfully',

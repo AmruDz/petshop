@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Categories;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Validator;
 
 class CategoriesController extends Controller
 {
@@ -30,13 +31,11 @@ class CategoriesController extends Controller
      */
     public function store(Request $request)
     {
-        $validatedData = $request->validate([
+        $validatedData = Validator::make($request->all(), [
             'name' => 'required',
-        ]);
+        ])->validate();
 
-        $categories = Categories::create([
-            'name' => $validatedData['name']
-        ]);
+        $categories = Categories::create($validatedData);
 
         return response()->json([
             'message' => 'Category created successfully',
@@ -69,9 +68,7 @@ class CategoriesController extends Controller
         $data = $request->all();
         $categories = Categories::findOrFail($id);
 
-        $categories->update([
-            'name' => $data['name'],
-        ]);
+        $categories->update($data );
 
         return response()->json([
             'message' => 'Category updated successfully!',

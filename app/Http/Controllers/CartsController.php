@@ -12,7 +12,8 @@ class CartsController extends Controller
      */
     public function index()
     {
-        //
+        $data = Carts::all();
+        return response()->json($data);
     }
 
     /**
@@ -20,7 +21,7 @@ class CartsController extends Controller
      */
     public function create()
     {
-        //
+
     }
 
     /**
@@ -28,15 +29,37 @@ class CartsController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validatedData = $request->validate([
+            'transaction_id' => 'null',
+            'product_id' => 'required',
+            'qty' => 'required',
+            'price' => 'required',
+            'subtotal' => 'required',
+            'discount' => 'required',
+            'total' => 'required',
+        ]);
+
+        $total = 0;
+        foreach ($validatedData as $calculated) {
+            $total += $calculated->subtotal;
+        }
+        $validatedData['total'] = $total;
+
+        $cart = Carts::create($validatedData);
+
+        return response()->json([
+            'message' => 'Cart created successfully!',
+            'data' => $cart,
+        ], 201);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Carts $carts)
+    public function show($id)
     {
-        //
+        // $data = Carts::findOrFail($id);
+         // return response()->json($data);
     }
 
     /**
