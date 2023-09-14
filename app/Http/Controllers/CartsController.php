@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Carts;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class CartsController extends Controller
 {
@@ -27,25 +29,25 @@ class CartsController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
-        $validatedData = $request->validate([
-            'transaction_id' => 'null',
+        $validator = Validator::make($request->all(), [
+            'transaction_id' => 'required',
             'product_id' => 'required',
             'qty' => 'required',
             'price' => 'required',
             'subtotal' => 'required',
             'discount' => 'required',
             'total' => 'required',
-        ]);
+        ])->validate();
 
-        $total = 0;
-        foreach ($validatedData as $calculated) {
-            $total += $calculated->subtotal;
-        }
-        $validatedData['total'] = $total;
+        // $total = 0;
+        // foreach ($validatedData as $calculated) {
+        //     $total += $calculated->subtotal;
+        // }
+        // $validatedData['total'] = $total;
 
-        $cart = Carts::create($validatedData);
+        $cart = Carts::create($validator);
 
         return response()->json([
             'message' => 'Cart created successfully!',
@@ -56,10 +58,10 @@ class CartsController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show($id)
+    public function show($transaction_id)
     {
-        // $data = Carts::findOrFail($id);
-         // return response()->json($data);
+        $data = Carts::findOrFail($transaction_id);
+         return response()->json($data);
     }
 
     /**

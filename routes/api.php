@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CartsController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\AuthController;
@@ -46,4 +47,12 @@ Route::controller(ProductsController::class)->group(function () {
     Route::get('/products/details/{id}', 'show');
     Route::post('/products/update/{id}', 'update');
     Route::get('/products/delete/{id}', 'destroy');
+});
+
+Route::controller(CartsController::class)->group(function () {
+    Route::get('/carts', 'index');
+    Route::post('/carts/post', 'store');
+    Route::get('/carts/details/{transaction_id}', 'show');
+    Route::post('/carts/update/{id}', 'update');
+    Route::get('/carts/delete/{id}', 'destroy');
 });

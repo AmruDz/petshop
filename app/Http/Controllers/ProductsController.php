@@ -4,9 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Products;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
@@ -20,7 +18,7 @@ class ProductsController extends Controller
         $data = Products::all();
 
         foreach ($data as $product) {
-            $product->image = Storage::disk('products')->url("{$product->image}");
+            $product->image = Storage::disk('products')->url($product->image);
         }
         return response()->json($data);
     }
@@ -83,9 +81,9 @@ class ProductsController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, $id): JsonResponse
     {
-        $validatedData = $request->validate([
+        $validator = Validator::make($request->all(), [
             'category_id' => 'required',
             'unit_id' => 'required',
             'name' => 'required',
@@ -95,26 +93,22 @@ class ProductsController extends Controller
             'is_discount_active' => 'boolean',
             'is_discount_percentage' => 'boolean',
             'discount' => 'required',
-        ]);
-        ;
+        ])->validate();
 
         $product = Products::findOrFail($id);
 
         if ($request->hasFile('image')) {
-            $newFile = $request->file('image');
-            $newFileName = uniqid() . '.' . $newFile->getClientOriginalExtension();
-
-            $newFile->storeAs('public/image/', $newFileName);
-
-            $validatedData['image'] = $newFileName;
+            $file = $request->file('image');
+            $fileName = uniqid() . '.' . $file->getClientOriginalExtension();
+            Storage::disk('products')->putFileAs('', $file, $fileName);
+            $validator['image'] = $fileName;
 
             if ($product->image) {
-                Storage::delete('public/image/' . $product->image);
+                Storage::disk('products')->delete($product->image);
             }
-
         }
 
-        $product->update($validatedData);
+        $product->update($validator);
 
         return response()->json([
             'message' => 'Product updated successfully!',
@@ -130,7 +124,7 @@ class ProductsController extends Controller
         $product = Products::findOrFail($id);
 
         if ($product->image) {
-            Storage::delete('public/image/' . $product->image);
+            Storage::disk('products')->delete($product->image);
         }
 
         $product->delete();
