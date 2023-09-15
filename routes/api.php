@@ -1,12 +1,13 @@
 <?php
 
-use App\Http\Controllers\CartsController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\CategoriesController;
 use App\Http\Controllers\UnitsController;
 use App\Http\Controllers\ProductsController;
+use App\Http\Controllers\CartsController;
+use App\Http\Controllers\TransactionsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -55,4 +56,12 @@ Route::controller(CartsController::class)->group(function () {
     Route::get('/carts/details/{id}', 'show');
     Route::post('/carts/update/{id}', 'update');
     Route::get('/carts/delete/{id}', 'destroy');
+});
+
+Route::controller(TransactionsController::class)->group(function () {
+    Route::get('/transactions', 'index');
+    Route::post('/transactions/post', 'store');
+    Route::get('/transactions/details/{id}', 'show');
+    Route::post('/transactions/update/{id}', 'update');
+    Route::get('/transactions/delete/{id}', 'destroy');
 });

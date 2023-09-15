@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Carts;
 use App\Models\Transactions;
+use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class TransactionsController extends Controller
 {
@@ -28,31 +31,82 @@ class TransactionsController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
-        //
+        // Validasi data yang diterima dari request
+        $validator = Validator::make($request->all(), [
+            'cashier_id' => 'required',
+            'customer' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()], 400);
+        }
+
+        $transaction_number = uniqid();
+
+        $calculated = $this->calculateCart();
+
+        $transaction = Transactions::create([
+            'cashier_id' => $request->input('cashier_id'),
+            'date' => Carbon::now(),
+            'transaction_number' => $transaction_number,
+            'customer' => $request->input('customer'),
+            'sub_total' => $calculated['subtotal'],
+            'discount' => $calculated['discount'],
+            'total' => $calculated['total'],
+        ]);
+
+        Carts::where('transaction_id', null)->update(['transaction_id' => $transaction->id]);
+
+        return response()->json([
+            'message' => 'Transaction successfully checked out!',
+            'data' => $transaction,
+        ], 201);
+    }
+
+    public function calculateCart()
+    {
+        $dataCart = Carts::where('transaction_id', null)->get();
+
+        $subtotal = 0;
+        $discount = 0;
+        $total = 0;
+
+        foreach ($dataCart as $item) {
+            $subtotal += $item->subtotal;
+            $discount += $item->discount;
+        }
+
+        $total = $subtotal - $discount;
+
+        return [
+            'subtotal' => $subtotal,
+            'discount' => $discount,
+            'total' => $total,
+        ];
     }
 
     public function checkout(Request $request)
-{
-    // Simpan data transaksi ke tabel 'transactions'
-    $transaction = new Transactions;
-    $transaction->user_id = $request->user()->id; // Sesuaikan dengan hubungan antara transaksi dan pengguna Anda.
-    // Setel atribut lainnya sesuai dengan data transaksi.
-    $transaction->save();
+    {
+        // Simpan data transaksi ke tabel 'transactions'
+        $transaction = new Transactions;
+        $transaction->user_id = $request->user()->id; // Sesuaikan dengan hubungan antara transaksi dan pengguna Anda.
+        // Setel atribut lainnya sesuai dengan data transaksi.
+        $transaction->save();
 
-    // Dapatkan ID transaksi yang baru saja dibuat
-    $newTransactionId = $transaction->id;
+        // Dapatkan ID transaksi yang baru saja dibuat
+        $newTransactionId = $transaction->id;
 
-    // Perbarui 'transaction_id' di tabel 'carts' yang memiliki 'transaction_id' NULL dengan ID transaksi yang baru
-    Carts::where('user_id', $request->user()->id)
-        ->whereNull('transaction_id')
-        ->update(['transaction_id' => $newTransactionId]);
+        // Perbarui 'transaction_id' di tabel 'carts' yang memiliki 'transaction_id' NULL dengan ID transaksi yang baru
+        Carts::where('user_id', $request->user()->id)
+            ->whereNull('transaction_id')
+            ->update(['transaction_id' => $newTransactionId]);
 
-    // Anda dapat menambahkan logika lainnya di sini, seperti mengirim email konfirmasi, dll.
+        // Anda dapat menambahkan logika lainnya di sini, seperti mengirim email konfirmasi, dll.
 
-    // Kemudian, Anda dapat memberikan respons bahwa transaksi telah berhasil.
-}
+        // Kemudian, Anda dapat memberikan respons bahwa transaksi telah berhasil.
+    }
     /**
      * Display the specified resource.
      */
