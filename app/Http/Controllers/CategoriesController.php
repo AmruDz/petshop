@@ -81,7 +81,7 @@ class CategoriesController extends Controller
      */
     public function destroy($id)
     {
-        $categories = Categories::find($id);
+        $categories = Categories::findOrFail($id);
 
         if (!$categories){
             return response()->json(['message' => 'Category not found!', Response::HTTP_NOT_FOUND]);

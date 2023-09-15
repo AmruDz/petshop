@@ -52,7 +52,7 @@ Route::controller(ProductsController::class)->group(function () {
 Route::controller(CartsController::class)->group(function () {
     Route::get('/carts', 'index');
     Route::post('/carts/post', 'store');
-    Route::get('/carts/details/{transaction_id}', 'show');
+    Route::get('/carts/details/{id}', 'show');
     Route::post('/carts/update/{id}', 'update');
     Route::get('/carts/delete/{id}', 'destroy');
 });

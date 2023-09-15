@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Carts;
+use App\Models\Products;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Validator;
 
 class CartsController extends Controller
@@ -29,30 +31,53 @@ class CartsController extends Controller
     /**
      * Store a newly created resource in storage.
      */
+
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'transaction_id' => 'required',
             'product_id' => 'required',
             'qty' => 'required',
             'price' => 'required',
-            'subtotal' => 'required',
+            'sub_total' => 'required',
             'discount' => 'required',
             'total' => 'required',
         ])->validate();
 
-        // $total = 0;
-        // foreach ($validatedData as $calculated) {
-        //     $total += $calculated->subtotal;
-        // }
-        // $validatedData['total'] = $total;
+        $dataProduct = Products::findOrFail($request->input('product_id'));
+        $price = $dataProduct->price;
+        $isDiscountActive = $dataProduct->is_discount_active;
+        $isDiscountPercentage = $dataProduct->is_discount_percentage;
+        $discount = $dataProduct->discount;
+
+        $subtotal = $request->input('qty') * $price;
+
+        $total = $this->calculated($subtotal, $discount, $isDiscountActive, $isDiscountPercentage);
+
+        $validator['product_id'] = $dataProduct->id;
+        $validator['price'] = $price;
+        $validator['discount'] = $discount;
+        $validator['sub_total'] = $subtotal;
+        $validator['total'] = $total;
 
         $cart = Carts::create($validator);
 
         return response()->json([
-            'message' => 'Cart created successfully!',
+            'message' => 'The product has been added to the cart!',
             'data' => $cart,
         ], 201);
+    }
+
+    public function calculated($subtotal, $discount, $isDiscountActive, $isDiscountPercentage)
+    {
+        if ($isDiscountActive) {
+            if ($isDiscountPercentage) {
+                return $subtotal - ($subtotal * $discount / 100);
+            } else {
+                return $subtotal - $discount;
+            }
+        } else {
+            return $subtotal;
+        }
     }
 
     /**
@@ -61,7 +86,7 @@ class CartsController extends Controller
     public function show($transaction_id)
     {
         $data = Carts::findOrFail($transaction_id);
-         return response()->json($data);
+        return response()->json($data);
     }
 
     /**
@@ -83,8 +108,16 @@ class CartsController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Carts $carts)
+    public function destroy($id)
     {
-        //
+        $carts = Carts::findOrFail($id);
+
+        if (!$carts){
+            return response()->json(['message' => 'The product on the cart was not found', Response::HTTP_NOT_FOUND]);
+        }
+
+        $carts->delete();
+
+        return response()->json(['message' => 'The product has been removed from the cart!', Response::HTTP_OK]);
     }
 }

@@ -16,10 +16,6 @@ class ProductsController extends Controller
     public function index()
     {
         $data = Products::all();
-
-        foreach ($data as $product) {
-            $product->image = Storage::disk('products')->url($product->image);
-        }
         return response()->json($data);
     }
     /**

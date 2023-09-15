@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Carts;
 use App\Models\Transactions;
 use Illuminate\Http\Request;
 
@@ -32,6 +33,26 @@ class TransactionsController extends Controller
         //
     }
 
+    public function checkout(Request $request)
+{
+    // Simpan data transaksi ke tabel 'transactions'
+    $transaction = new Transactions;
+    $transaction->user_id = $request->user()->id; // Sesuaikan dengan hubungan antara transaksi dan pengguna Anda.
+    // Setel atribut lainnya sesuai dengan data transaksi.
+    $transaction->save();
+
+    // Dapatkan ID transaksi yang baru saja dibuat
+    $newTransactionId = $transaction->id;
+
+    // Perbarui 'transaction_id' di tabel 'carts' yang memiliki 'transaction_id' NULL dengan ID transaksi yang baru
+    Carts::where('user_id', $request->user()->id)
+        ->whereNull('transaction_id')
+        ->update(['transaction_id' => $newTransactionId]);
+
+    // Anda dapat menambahkan logika lainnya di sini, seperti mengirim email konfirmasi, dll.
+
+    // Kemudian, Anda dapat memberikan respons bahwa transaksi telah berhasil.
+}
     /**
      * Display the specified resource.
      */
