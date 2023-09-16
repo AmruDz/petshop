@@ -15,7 +15,14 @@ class ProductsController extends Controller
      */
     public function index()
     {
-        $data = Products::all();
+        $data = Products::orderBy('name', 'asc')->get();
+        return response()->json($data);
+    }
+
+    public function search(Request $request)
+    {
+        $search = $request->input('search');
+        $data = Products::where('name', 'like', '%'. $search .'%')->get();
         return response()->json($data);
     }
     /**
@@ -60,9 +67,9 @@ class ProductsController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show($id)
+    public function show($category_id)
     {
-        $data = Products::findOrFail($id);
+        $data = Products::where('category_id', $category_id)->get();
         return response()->json($data);
     }
 

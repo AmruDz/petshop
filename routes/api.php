@@ -44,16 +44,17 @@ Route::controller(UnitsController::class)->group(function () {
 
 Route::controller(ProductsController::class)->group(function () {
     Route::get('/products', 'index');
+    Route::get('/products/serach', 'search');
     Route::post('/products/post', 'store');
-    Route::get('/products/details/{id}', 'show');
+    Route::get('/products/list/{category_id}', 'show');
     Route::post('/products/update/{id}', 'update');
     Route::get('/products/delete/{id}', 'destroy');
 });
 
 Route::controller(CartsController::class)->group(function () {
-    Route::get('/carts', 'index');
+    Route::get('/carts/list/{transaction_id}', 'index');
     Route::post('/carts/post', 'store');
-    Route::get('/carts/details/{id}', 'show');
+    Route::get('/carts/pending', 'show');
     Route::post('/carts/update/{id}', 'update');
     Route::get('/carts/delete/{id}', 'destroy');
 });

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Carts;
+use App\Models\Products;
 use App\Models\Transactions;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -33,29 +34,39 @@ class TransactionsController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        // Validasi data yang diterima dari request
-        $validator = Validator::make($request->all(), [
+        Validator::make($request->all(), [
             'cashier_id' => 'required',
             'customer' => 'required',
-        ]);
+        ])->validate();
 
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 400);
-        }
-
-        $transaction_number = uniqid();
+        $transactionNumber = uniqid();
 
         $calculated = $this->calculateCart();
 
         $transaction = Transactions::create([
             'cashier_id' => $request->input('cashier_id'),
             'date' => Carbon::now(),
-            'transaction_number' => $transaction_number,
+            'transaction_number' => $transactionNumber,
             'customer' => $request->input('customer'),
             'sub_total' => $calculated['subtotal'],
             'discount' => $calculated['discount'],
             'total' => $calculated['total'],
         ]);
+
+        $cartItems = Carts::where('transaction_id', null)->get();
+
+        foreach ($cartItems as $cartItem) {
+            $product = Products::find($cartItem->product_id);
+
+            if ($product->qty >= $cartItem->qty) {
+                $product->qty -= $cartItem->qty;
+                $product->save();
+            } else {
+                return response()->json([
+                    'message' => 'Stock is not sufficient for one or more products in the cart.',
+                ], 400);
+            }
+        }
 
         Carts::where('transaction_id', null)->update(['transaction_id' => $transaction->id]);
 
@@ -74,7 +85,7 @@ class TransactionsController extends Controller
         $total = 0;
 
         foreach ($dataCart as $item) {
-            $subtotal += $item->subtotal;
+            $subtotal += $item->sub_total;
             $discount += $item->discount;
         }
 
@@ -85,27 +96,6 @@ class TransactionsController extends Controller
             'discount' => $discount,
             'total' => $total,
         ];
-    }
-
-    public function checkout(Request $request)
-    {
-        // Simpan data transaksi ke tabel 'transactions'
-        $transaction = new Transactions;
-        $transaction->user_id = $request->user()->id; // Sesuaikan dengan hubungan antara transaksi dan pengguna Anda.
-        // Setel atribut lainnya sesuai dengan data transaksi.
-        $transaction->save();
-
-        // Dapatkan ID transaksi yang baru saja dibuat
-        $newTransactionId = $transaction->id;
-
-        // Perbarui 'transaction_id' di tabel 'carts' yang memiliki 'transaction_id' NULL dengan ID transaksi yang baru
-        Carts::where('user_id', $request->user()->id)
-            ->whereNull('transaction_id')
-            ->update(['transaction_id' => $newTransactionId]);
-
-        // Anda dapat menambahkan logika lainnya di sini, seperti mengirim email konfirmasi, dll.
-
-        // Kemudian, Anda dapat memberikan respons bahwa transaksi telah berhasil.
     }
     /**
      * Display the specified resource.

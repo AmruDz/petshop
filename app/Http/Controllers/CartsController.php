@@ -14,9 +14,9 @@ class CartsController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index($transaction_id)
     {
-        $data = Carts::all();
+        $data = Carts::where('transaction_id', $transaction_id)->get();
         return response()->json($data);
     }
 
@@ -83,9 +83,9 @@ class CartsController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show($transaction_id)
+    public function show()
     {
-        $data = Carts::findOrFail($transaction_id);
+        $data = Carts::whereNull('transaction_id')->get();
         return response()->json($data);
     }
 
