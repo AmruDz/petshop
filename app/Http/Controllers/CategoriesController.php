@@ -68,7 +68,7 @@ class CategoriesController extends Controller
         $data = $request->all();
         $categories = Categories::findOrFail($id);
 
-        $categories->update($data );
+        $categories->update($data);
 
         return response()->json([
             'message' => 'Category updated successfully!',

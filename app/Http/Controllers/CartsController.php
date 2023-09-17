@@ -34,32 +34,38 @@ class CartsController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
+        Validator::make($request->all(), [
             'product_id' => 'required',
             'qty' => 'required',
-            'price' => 'required',
-            'sub_total' => 'required',
-            'discount' => 'required',
-            'total' => 'required',
         ])->validate();
 
-        $dataProduct = Products::findOrFail($request->input('product_id'));
+        $product_id = $request->input('product_id');
+        $qty = $request->input('qty');
+
+        $dataProduct = Products::findOrFail($product_id);
         $price = $dataProduct->price;
         $isDiscountActive = $dataProduct->is_discount_active;
         $isDiscountPercentage = $dataProduct->is_discount_percentage;
         $discount = $dataProduct->discount;
-
-        $subtotal = $request->input('qty') * $price;
-
+        $subtotal= $qty * $price;
         $total = $this->calculated($subtotal, $discount, $isDiscountActive, $isDiscountPercentage);
 
-        $validator['product_id'] = $dataProduct->id;
-        $validator['price'] = $price;
-        $validator['discount'] = $discount;
-        $validator['sub_total'] = $subtotal;
-        $validator['total'] = $total;
+            if ($dataProduct->qty >= $qty) {
+                $dataProduct->qty -= $qty;
+            } else {
+                return response()->json([
+                    'message' => 'Stock is not sufficient for one or more products in the cart.',
+                ], 400);
+            }
 
-        $cart = Carts::create($validator);
+        $cart = Carts::create([
+            'product_id' => $product_id,
+            'qty' => $qty,
+            'price' => $price,
+            'sub_total' => $subtotal,
+            'discount' => $discount,
+            'total' => $total,
+        ]);
 
         return response()->json([
             'message' => 'The product has been added to the cart!',
@@ -92,17 +98,49 @@ class CartsController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Carts $carts)
-    {
-        //
-    }
-
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Carts $carts)
+    public function update(Request $request, $id)
     {
-        //
+        Validator::make($request->all(), [
+            'qty' => 'required',
+        ])->validate();
+
+        $qty = $request->input('qty');
+
+        $cart = Carts::findOrFail($id);
+        $product_id = $cart->product_id;
+
+        $dataProduct = Products::findOrFail($product_id);
+        $price = $dataProduct->price;
+        $isDiscountActive = $dataProduct->is_discount_active;
+        $isDiscountPercentage = $dataProduct->is_discount_percentage;
+        $discount = $dataProduct->discount;
+        $subtotal = $qty * $price;
+        $total = $this->calculated($subtotal, $discount, $isDiscountActive, $isDiscountPercentage);
+
+        if ($dataProduct->qty >= $qty) {
+            $dataProduct->qty -= $qty;
+        } else {
+            return response()->json([
+                'message' => 'Stock is not sufficient for one or more products in the cart.',
+            ], 400);
+        }
+        
+        $cart->update([
+            'product_id' => $product_id,
+            'qty' => $qty,
+            'price' => $price,
+            'sub_total' => $subtotal,
+            'discount' => $discount,
+            'total' => $total,
+        ]);
+
+        return response()->json([
+            'message' => 'The cart has been updated!',
+            'data' => $cart,
+        ], 201);
     }
 
     /**
