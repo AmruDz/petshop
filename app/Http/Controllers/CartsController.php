@@ -127,7 +127,7 @@ class CartsController extends Controller
                 'message' => 'Stock is not sufficient for one or more products in the cart.',
             ], 400);
         }
-        
+
         $cart->update([
             'product_id' => $product_id,
             'qty' => $qty,
@@ -137,7 +137,7 @@ class CartsController extends Controller
             'total' => $total,
         ]);
 
-        return response()->json([
+        return response()->json([ 
             'message' => 'The cart has been updated!',
             'data' => $cart,
         ], 201);
