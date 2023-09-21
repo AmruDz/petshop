@@ -17,7 +17,7 @@ class Transactions extends Model
         'discount',
         'total',
     ];
-
+    
     public function cashier()
     {
         return $this->belongsTo(User::class, 'cashier_id');

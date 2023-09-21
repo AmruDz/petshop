@@ -15,14 +15,37 @@ class ProductsController extends Controller
      */
     public function index()
     {
-        $data = Products::orderBy('name', 'asc')->get();
+        $data = Products::orderBy('is_discount_active', 'desc')->get();
+
+        foreach ($data as $change) {
+            $change->price = $this->formatToIDR($change->price);
+            if ($change->is_discount_active == 1) {
+                if ($change->is_discount_percentage == 1) {
+                    $change->discount = $this->formatPercent($change->discount);
+                } else {
+                    $change->discount = $this->formatToIDR($change->discount);
+                }
+            } else {
+                $change->discount;
+            }
+        }
+
         return response()->json($data);
     }
 
-    public function search(Request $request)
+    public function formatPercent($discount)
     {
-        $search = $request->input('search');
-        $data = Products::where('name', 'like', '%'. $search .'%')->get();
+        return $discount . ' ' . '%';
+    }
+
+    public function formatToIDR($price)
+    {
+        return 'Rp' . ' ' . number_format($price, 0, ',', '.');
+    }
+
+    public function search($query)
+    {
+        $data = Products::where('name', 'like', '%' . $query . '%')->get();
         return response()->json($data);
     }
     /**

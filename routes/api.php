@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\CategoriesController;
@@ -20,11 +19,10 @@ use App\Http\Controllers\TransactionsController;
 |
 */
 
-// Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-//     return $request->user();
-// });
-
 // Route::post('/login', [AuthController::class, 'login']);
+
+// Route::middleware('auth:jwt')->group(function () {
+// });
 
 Route::controller(CategoriesController::class)->group(function () {
     Route::get('/categories', 'index');
@@ -44,7 +42,7 @@ Route::controller(UnitsController::class)->group(function () {
 
 Route::controller(ProductsController::class)->group(function () {
     Route::get('/products', 'index');
-    Route::get('/products/serach', 'search');
+    Route::get('/products/search/{query}', 'search');
     Route::post('/products/post', 'store');
     Route::get('/products/list/{category_id}', 'show');
     Route::post('/products/update/{id}', 'update');
@@ -55,14 +53,14 @@ Route::controller(CartsController::class)->group(function () {
     Route::get('/carts/list/{transaction_id}', 'index');
     Route::post('/carts/post', 'store');
     Route::get('/carts/pending', 'show');
-    Route::post('/carts/update/{id}', 'update');
-    Route::get('/carts/delete/{id}', 'destroy');
+    Route::post('/carts/update', 'update');
+    Route::post('/carts/delete', 'destroy');
 });
 
 Route::controller(TransactionsController::class)->group(function () {
     Route::get('/transactions', 'index');
-    Route::post('/transactions/post', 'store');
-    Route::get('/transactions/details/{id}', 'show');
+    Route::post('/transactions/checkout', 'store');
+    Route::get('/transactions/pending', 'show');
     Route::post('/transactions/update/{id}', 'update');
-    Route::get('/transactions/delete/{id}', 'destroy');
+    Route::post('/transactions/delete/{id}', 'destroy');
 });
