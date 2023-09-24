@@ -6,16 +6,12 @@ use App\Models\Carts;
 use App\Models\Products;
 use App\Models\Transactions;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class TransactionsController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
         $headerDate = Transactions::select(
@@ -25,99 +21,153 @@ class TransactionsController extends Controller
             ->orderBy('date', 'desc')
             ->get();
         $result = [];
-        foreach ($headerDate as $date) {
-            $dateFormatted = Carbon::parse($date->date)->format('l, d F Y');
 
-            $transactions = Transactions::whereDate('date',  $date->date)->orderBy('id', 'desc')->get();
-            $total = $transactions->sum('total');
-            $totalFormatted = $this->formatToIDR($total);
-            $data = [
-                'date' => $dateFormatted,
-                'total' => $totalFormatted,
-                'data' => $transactions
-            ];
-            $result[] = $data;
+        try {
+            foreach ($headerDate as $date) {
+                $dateFormatted = Carbon::parse($date->date)->format('l, d F Y');
+
+                $transactions = Transactions::whereDate('date', $date->date)->orderBy('id', 'desc')->get();
+                $total = $transactions->sum('total');
+                $totalFormatted = $this->formatToIDR($total);
+                $data = [
+                    'date' => $dateFormatted,
+                    'total' => $totalFormatted,
+                    'data' => $transactions
+                ];
+                $result[] = $data;
+            }
+
+            return response()->json([
+                'message' => 'Transactions retrieved successfully',
+                'data' => $result,
+            ], 200);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'message' => 'An error occurred while displaying transactions data',
+            ], 500);
         }
-
-        return response()->json($result);
     }
-
-    public function formatToIDR($total)
+    public function details($transaction_id)
     {
-        return 'Rp' . ' ' . number_format($total, 0, ',', '.');
-    }
+        $carts = Carts::where('transaction_id', $transaction_id)->get();
+        $transactionData = Transactions::where('id', $transaction_id)->get();
 
-    public function formatPercent($discount)
-    {
-        return $discount . ' ' . '%';
-    }
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
+        try {
+            foreach ($transactionData as $data) {
+                $dateFormatted = Carbon::parse($data->date)->format('l, d F Y');
+                $data->date = $dateFormatted;
+                $data->sub_total = $this->formatToIDR($data->sub_total);
+                $data->discount = $this->formatToIDR($data->discount);
+                $data->total = $this->formatToIDR($data->total);
+            }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+            foreach ($carts as $format) {
+                $format->price = $this->formatToIDR($format->price);
+                $format->sub_total = $this->formatToIDR($format->sub_total);
+                $format->total = $this->formatToIDR($format->total);
+                if ($format->discount == 0) {
+                    $format->discount;
+                } else if ($format->discount < 100) {
+                    $format->discount = $this->formatPercent($format->discount);
+                } else{
+                    $format->discount = $this->formatToIDR($format->discount);
+                }
+            }
+
+            return response()->json([
+                'transaction' => $transactionData,
+                'details' => $carts,
+            ], 200);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'message' => 'An error occurred while displaying transactions data',
+            ], 500);
+        }
+    }
+    public function show()
+    {
+        $pendingCart = Carts::where('transaction_id', null)->get();
+        $totalTransactions = Transactions::count();
+
+        try {
+            $orderNumber = $totalTransactions + 2;
+            $toBePaid = $this->calculatePendingTransactions();
+
+            return response()->json([
+                'order_number' => $orderNumber = $this->orderNumber($orderNumber),
+                'to be paid' => $toBePaid,
+                'data' => $pendingCart,
+            ], 200);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'message' => 'An error occurred while displaying pending transactions data',
+            ], 500);
+        }
+    }
     public function store(Request $request)
     {
         Validator::make($request->all(), [
-            'cashier_id' => 'required',
             'customer' => 'required',
             'paid' => 'required',
         ])->validate();
 
-        $calculated = $this->checkotTransaction();
+        $calculated = $this->checkoutTransaction();
 
         $paid = $request->input('paid');
-        $return = $paid - $calculated['total'];
 
-        if ($calculated['total'] > $paid) {
-            return response()->json([
-                'message' => 'Cannot continue the transaction!',
-            ], 400);
-        } else {
-            $transactionNumber = substr(str_shuffle("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"), 0, 5) . time();
+        $user = auth()->user();
+        $cashierId = $user->id;
 
-            $transaction = Transactions::create([
-                'cashier_id' => $request->input('cashier_id'),
-                'date' => Carbon::now(),
-                'transaction_number' => $transactionNumber,
-                'customer' => $request->input('customer'),
-                'sub_total' => $calculated['subtotal'],
-                'discount' => $calculated['discount'],
-                'total' => $calculated['total'],
-            ]);
+        try {
+            if ($calculated['total'] > $paid) {
+                return response()->json([
+                    'message' => 'Cannot continue the transaction!',
+                ], 400);
+            } else {
+                $transactionNumber = substr(str_shuffle("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"), 0, 5) . time();
 
-            $cartItems = Carts::where('transaction_id', null)->get();
+                $transaction = Transactions::create([
+                    'cashier_id' => $cashierId,
+                    'date' => Carbon::now(),
+                    'transaction_number' => $transactionNumber,
+                    'customer' => $request->input('customer'),
+                    'sub_total' => $calculated['subtotal'],
+                    'discount' => $calculated['discount'],
+                    'total' => $calculated['total'],
+                ]);
 
-            foreach ($cartItems as $cartItem) {
-                $product = Products::find($cartItem->product_id);
+                $cartItems = Carts::where('transaction_id', null)->get();
 
-                if ($product->qty >= $cartItem->qty) {
-                    $product->qty -= $cartItem->qty;
-                    $product->save();
-                } else {
-                    return response()->json([
-                        'message' => 'Stock is not sufficient for one or more products in the cart.',
-                    ], 400);
+                foreach ($cartItems as $cartItem) {
+                    $product = Products::find($cartItem->product_id);
+
+                    if ($product->qty >= $cartItem->qty) {
+                        $product->qty -= $cartItem->qty;
+                        $product->save();
+                    } else {
+                        return response()->json([
+                            'message' => 'Stock is not sufficient for one or more products in the cart.',
+                        ], 400);
+                    }
                 }
+
+                Carts::where('transaction_id', null)->update(['transaction_id' => $transaction->id]);
+
+                $return = $paid - $calculated['total'];
+
+                return response()->json([
+                    'message' => 'Transaction successfully checked out!',
+                    'return' => $return = $this->formatToIDR($return),
+                    'data' => $transaction,
+                ], 201);
             }
-
-            Carts::where('transaction_id', null)->update(['transaction_id' => $transaction->id]);
-
+        } catch (\Throwable $th) {
             return response()->json([
-                'message' => 'Transaction successfully checked out!',
-                'return' => $return = $this->formatToIDR($return),
-                'data' => $transaction,
-            ], 201);
+                'message' => 'An error occurred while checkout transactions',
+            ], 500);
         }
     }
-
-    public function checkotTransaction()
+    public function checkoutTransaction()
     {
         $dataCart = Carts::whereNull('transaction_id')->get();
 
@@ -138,7 +188,7 @@ class TransactionsController extends Controller
             'total' => $total,
         ];
     }
-    public function calculateCart()
+    public function calculatePendingTransactions()
     {
         $dataCart = Carts::whereNull('transaction_id')->get();
 
@@ -159,41 +209,28 @@ class TransactionsController extends Controller
             'total' => $total = $this->formatToIDR($total),
         ];
     }
-    /**
-     * Display the specified resource.
-     */
-    public function show()
+    public function orderNumber($orderNumber)
     {
-        $data = Carts::where('transaction_id', null)->get();
-        $toBePaid = $this->calculateCart();
-
-        return response()->json([
-            'to be paid' => $toBePaid,
-            'data' => $data,
-        ], 200);
+        if ($orderNumber < 10) {
+            return '#' . '0' . '0' . '0' . '0' . '0' . $orderNumber;
+        } elseif ($orderNumber >= 10) {
+            return '#' . '0' . '0' . '0' . '0' . $orderNumber;
+        } elseif ($orderNumber >= 100) {
+            return '#' . '0' . '0' . '0' . $orderNumber;
+        } elseif ($orderNumber >= 1000) {
+            return '#' . '0' . '0' . $orderNumber;
+        } elseif ($orderNumber >= 10000) {
+            return '#' . '0' . $orderNumber;
+        } else {
+            return '#' . $orderNumber;
+        }
     }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Transactions $transactions)
+    public function formatToIDR($total)
     {
-        //
+        return 'Rp' . ' ' . number_format($total, 0, ',', '.');
     }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Transactions $transactions)
+    public function formatPercent($discount)
     {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Transactions $transactions)
-    {
-        //
+        return $discount . ' ' . '%';
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
 {
@@ -27,7 +28,7 @@ class AuthController extends Controller
     {
         $credentials = request(['username', 'password']);
 
-        if (! $token = auth('api')->attempt($credentials)) {
+        if (!$token = auth('api')->attempt($credentials)) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
@@ -80,5 +81,38 @@ class AuthController extends Controller
             'token_type' => 'bearer',
             // 'expires_in' => auth()->factory()->getTTL() * 60
         ]);
+    }
+
+    public function update(Request $request)
+    {
+        $validatedData = $request->validate([
+            'username' => 'nullable|string|min:4',
+            'password' => 'nullable|string|min:6',
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,jfif|max:2048',
+        ]);
+
+        $user = auth()->user();
+
+        if ($request->has('username')) {
+            $user->username = $validatedData['username'];
+        }
+
+        if ($request->has('password')) {
+            $user->password = bcrypt($validatedData['password']);
+        }
+
+        if ($request->hasFile('avatar')) {
+            $file = $request->file('avatar');
+            $fileName = uniqid() . '.' . $file->getClientOriginalExtension();
+            Storage::disk('avatars')->putFileAs('', $file, $fileName);
+            $validatedData['avatar'] = $fileName;
+        }
+
+        $user->update($validatedData);
+
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'data' => $user,
+        ], 200);
     }
 }

@@ -4,34 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Carts;
 use App\Models\Products;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 class CartsController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index($transaction_id)
-    {
-        $data = Carts::where('transaction_id', $transaction_id)->get();
-        return response()->json($data);
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-
-    public function store(Request $request): JsonResponse
+    public function store(Request $request)
     {
         Validator::make($request->all(), [
             'product_id' => 'required',
@@ -49,55 +27,32 @@ class CartsController extends Controller
         $subtotal = $qty * $price;
         $total = $this->calculated($subtotal, $discount, $isDiscountActive, $isDiscountPercentage);
 
-        if ($dataProduct->qty >= $qty) {
-            $cart = Carts::create([
-                'product_id' => $product_id,
-                'qty' => $qty,
-                'price' => $price,
-                'sub_total' => $subtotal,
-                'discount' => $discount,
-                'total' => $total,
-            ]);
+        try {
+            if ($dataProduct->qty >= $qty) {
+                $cart = Carts::create([
+                    'product_id' => $product_id,
+                    'qty' => $qty,
+                    'price' => $price,
+                    'sub_total' => $subtotal,
+                    'discount' => $discount,
+                    'total' => $total,
+                ]);
 
-            return response()->json([
-                'message' => 'The product has been added to the cart!',
-                'data' => $cart,
-            ], 201);
-        } else {
-            return response()->json([
-                'message' => 'Stock is not sufficient for one or more products in the cart.',
-            ], 400);
-        }
-    }
-
-    public function calculated($subtotal, $discount, $isDiscountActive, $isDiscountPercentage)
-    {
-        if ($isDiscountActive) {
-            if ($isDiscountPercentage) {
-                return $subtotal - ($subtotal * $discount / 100);
+                return response()->json([
+                    'message' => 'The product has been added to the cart!',
+                    'data' => $cart,
+                ], 201);
             } else {
-                return $subtotal - $discount;
+                return response()->json([
+                    'message' => 'Stock is not sufficient for one or more products in the cart.',
+                ], 400);
             }
-        } else {
-            return $subtotal;
+        } catch (\Throwable $th) {
+            return response()->json([
+                'message' => 'An error occurred while adding product to cart',
+            ], 500);
         }
     }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show()
-    {
-        $data = Carts::whereNull('transaction_id')->get();
-        return response()->json($data);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request)
     {
         Validator::make($request->all(), [
@@ -116,33 +71,35 @@ class CartsController extends Controller
         $subtotal = $qty * $price;
         $total = $this->calculated($subtotal, $discount, $isDiscountActive, $isDiscountPercentage);
 
-        if ($dataProduct->qty >= $qty) {
-            $cart = Carts::where('product_id', $product_id)
-                ->whereNull('transaction_id')
-                ->firstOrFail();
+        try {
+            if ($dataProduct->qty >= $qty) {
+                $cart = Carts::where('product_id', $product_id)
+                    ->whereNull('transaction_id')
+                    ->firstOrFail();
 
-            $cart->update([
-                'qty' => $qty,
-                'price' => $price,
-                'sub_total' => $subtotal,
-                'discount' => $discount,
-                'total' => $total,
-            ]);
+                $cart->update([
+                    'qty' => $qty,
+                    'price' => $price,
+                    'sub_total' => $subtotal,
+                    'discount' => $discount,
+                    'total' => $total,
+                ]);
 
+                return response()->json([
+                    'message' => 'The cart has been updated!',
+                    'data' => $cart,
+                ], 201);
+            } else {
+                return response()->json([
+                    'message' => 'Stock is not sufficient for one or more products in the cart.',
+                ], 400);
+            }
+        } catch (\Throwable $th) {
             return response()->json([
-                'message' => 'The cart has been updated!',
-                'data' => $cart,
-            ], 201);
-        } else {
-            return response()->json([
-                'message' => 'Stock is not sufficient for one or more products in the cart.',
-            ], 400);
+                'message' => 'An error occurred while updating cart data',
+            ], 500);
         }
     }
-
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Request $request)
     {
         Validator::make($request->all(), [
@@ -177,7 +134,18 @@ class CartsController extends Controller
             return response()->json([
                 'message' => 'An error occurred while removing the item from the cart.',
             ], 500);
-
+        }
+    }
+    public function calculated($subtotal, $discount, $isDiscountActive, $isDiscountPercentage)
+    {
+        if ($isDiscountActive) {
+            if ($isDiscountPercentage) {
+                return $subtotal - ($subtotal * $discount / 100);
+            } else {
+                return $subtotal - $discount;
+            }
+        } else {
+            return $subtotal;
         }
     }
 }

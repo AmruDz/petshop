@@ -3,92 +3,109 @@
 namespace App\Http\Controllers;
 
 use App\Models\Categories;
+use App\Models\Products;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Validator;
 
 class CategoriesController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        $data = Categories::all();
-        return response()->json($data);
+        try {
+            $categories = Categories::all();
+
+            return response()->json([
+                'message' => 'Categories retrieved successfully',
+                'data' => $categories,
+            ], 200);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'message' => 'An error occurred while displaying category data',
+            ], 500);
+        }
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        $validatedData = Validator::make($request->all(), [
+        $validator = Validator::make($request->all(), [
             'name' => 'required',
-        ])->validate();
+        ]);
 
-        $categories = Categories::create($validatedData);
-
-        return response()->json([
-            'message' => 'Category created successfully',
-            'data' => $categories,
-        ], 201);
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show($id)
-    {
-        $data = Categories::findOrFail($id);
-        return response()->json($data);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Categories $categories)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, $id)
-    {
-        $data = $request->all();
-        $categories = Categories::findOrFail($id);
-
-        $categories->update($data);
-
-        return response()->json([
-            'message' => 'Category updated successfully!',
-            'data' => $categories,
-        ], 200);
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy($id)
-    {
-        $categories = Categories::findOrFail($id);
-
-        if (!$categories){
-            return response()->json(['message' => 'Category not found!', Response::HTTP_NOT_FOUND]);
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Invalid category data',
+                'errors' => $validator->errors(),
+            ], 400);
         }
 
-        $categories->delete();
+        try {
+            $category = Categories::create($request->all());
 
-        return response()->json(['message' => 'Category deleted successfully!', Response::HTTP_OK]);
+            return response()->json([
+                'message' => 'Category created successfully',
+                'data' => $category,
+            ], 201);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'message' => 'An error occurred while creating a category',
+            ], 500);
+        }
+    }
+
+    public function update(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Invalid category data',
+                'errors' => $validator->errors(),
+            ], 400);
+        }
+
+        try {
+            $category = Categories::findOrFail($id);
+
+            if (!$category) {
+                return response()->json([
+                    'message' => 'Category not found!',
+                ], 404);
+            }
+
+            $category->update($request->all());
+
+            return response()->json([
+                'message' => 'Category updated successfully!',
+                'data' => $category,
+            ], 200);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'message' => 'An error occurred while updating a category',
+            ], 500);
+        }
+    }
+
+    public function destroy($id)
+    {
+        $category = Categories::find($id);
+
+        if (!$category) {
+            return response()->json([
+                'message' => 'Category not found!',
+            ], 404);
+        }
+
+        try {
+            $category->delete();
+            return response()->json([
+                'message' => 'Category deleted successfully!',
+            ], 200);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'message' => 'An error occurred while deleting a category',
+            ], 500);
+        }
     }
 }

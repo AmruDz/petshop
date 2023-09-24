@@ -3,62 +3,62 @@
 namespace App\Http\Controllers;
 
 use App\Models\Products;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class ProductsController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        $data = Products::orderBy('is_discount_active', 'desc')->get();
+        try {
+            $products = Products::orderBy('is_discount_active', 'desc')->get();
 
-        foreach ($data as $change) {
-            $change->price = $this->formatToIDR($change->price);
-            if ($change->is_discount_active == 1) {
-                if ($change->is_discount_percentage == 1) {
-                    $change->discount = $this->formatPercent($change->discount);
+            foreach ($products as $change) {
+                $change->price = $this->formatToIDR($change->price);
+                if ($change->is_discount_active == 1) {
+                    if ($change->is_discount_percentage == 1) {
+                        $change->discount = $this->discPercent($change->discount);
+                    } else {
+                        $change->discount = $this->discIDR($change->discount);
+                    }
                 } else {
-                    $change->discount = $this->formatToIDR($change->discount);
+                    $change->discount;
                 }
-            } else {
-                $change->discount;
             }
+
+            return response()->json([
+                'message' => 'Products retrieved successfully',
+                'data' => $products,
+            ], 200);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'message' => 'An error occurred while displaying product data',
+            ], 500);
+        }
+    }
+    public function show($id)
+    {
+        $product = Products::find($id);
+
+        if (!$product) {
+            return response()->json([
+                'message' => 'Product not found!',
+            ], 404);
         }
 
-        return response()->json($data);
+        try {
+            return response()->json([
+                'message' => 'Product retrieved successfully',
+                'data' => $product,
+            ], 200);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'message' => 'An error occurred while creating product data',
+            ], 500);
+        }
     }
-
-    public function formatPercent($discount)
-    {
-        return $discount . ' ' . '%';
-    }
-
-    public function formatToIDR($price)
-    {
-        return 'Rp' . ' ' . number_format($price, 0, ',', '.');
-    }
-
-    public function search($query)
-    {
-        $data = Products::where('name', 'like', '%' . $query . '%')->get();
-        return response()->json($data);
-    }
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-
-    }
-
-
-    public function store(Request $request): JsonResponse
+    public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'category_id' => 'required',
@@ -79,35 +79,20 @@ class ProductsController extends Controller
             $validator['image'] = $fileName;
         }
 
-        $product = Products::create($validator);
+        try {
+            $product = Products::create($validator);
 
-        return response()->json([
-            'message' => 'Product created successfully',
-            'data' => $product,
-        ], 201);
+            return response()->json([
+                'message' => 'Product created successfully',
+                'data' => $product,
+            ], 201);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'message' => 'An error occurred while creating a product',
+            ], 500);
+        }
     }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show($category_id)
-    {
-        $data = Products::where('category_id', $category_id)->get();
-        return response()->json($data);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Products $products)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, $id): JsonResponse
+    public function update(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
             'category_id' => 'required',
@@ -121,7 +106,13 @@ class ProductsController extends Controller
             'discount' => 'required',
         ])->validate();
 
-        $product = Products::findOrFail($id);
+        $product = Products::find($id);
+
+        if (!$product) {
+            return response()->json([
+                'message' => 'Product not found!',
+            ], 404);
+        }
 
         if ($request->hasFile('image')) {
             $file = $request->file('image');
@@ -134,28 +125,55 @@ class ProductsController extends Controller
             }
         }
 
-        $product->update($validator);
+        try {
+            $product->update($validator);
 
-        return response()->json([
-            'message' => 'Product updated successfully!',
-            'data' => $product,
-        ], 200);
+            return response()->json([
+                'message' => 'Product updated successfully!',
+                'data' => $product,
+            ], 200);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'message' => 'An error occurred while updating product data',
+            ], 500);
+        }
     }
-
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Request $request, $id)
     {
         $product = Products::findOrFail($id);
+
+        if (!$product) {
+            return response()->json([
+                'message' => 'Product not found!',
+            ], 404);
+        }
 
         if ($product->image) {
             Storage::disk('products')->delete($product->image);
         }
 
-        $product->delete();
-        return response()->json([
-            'message' => 'Product deleted successfully',
-        ], 200);
+        try {
+            $product->delete();
+
+            return response()->json([
+                'message' => 'Product deleted successfully',
+            ], 200);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'message' => 'An error occurred while deleting a product',
+            ], 500);
+        }
+    }
+    public function discPercent($discount)
+    {
+        return 'Disc' . ' ' . $discount . ' ' . '%';
+    }
+    public function discIDR($discount)
+    {
+        return 'Disc' . ' ' . 'Rp' . ' ' . number_format($discount, 0, ',', '.');
+    }
+    public function formatToIDR($price)
+    {
+        return 'Rp' . ' ' . number_format($price, 0, ',', '.');
     }
 }

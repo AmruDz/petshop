@@ -18,49 +18,52 @@ use App\Http\Controllers\TransactionsController;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
+Route::post('/petshop/login', [AuthController::class, 'login']);
 
-// Route::post('/login', [AuthController::class, 'login']);
+Route::middleware('auth:api')->group(function () {
+    Route::post('/petshop/profile-edit/post', [AuthController::class, 'update']);
+    Route::post('/petshop/logout', [AuthController::class, 'logout']);
 
-// Route::middleware('auth:jwt')->group(function () {
-// });
+    Route::controller(CategoriesController::class)->group(function () {
+        Route::get('/categories', 'index');
+        Route::post('/category/post', 'store');
+        Route::post('/category/update/{id}', 'update');
+        Route::get('/category/delete/{id}', 'destroy');
+    });
 
-Route::controller(CategoriesController::class)->group(function () {
-    Route::get('/categories', 'index');
-    Route::post('/categories/post', 'store');
-    Route::get('/categories/details/{id}', 'show');
-    Route::post('/categories/update/{id}', 'update');
-    Route::get('/categories/delete/{id}', 'destroy');
+    Route::controller(UnitsController::class)->group(function () {
+        Route::get('/units', 'index');
+        Route::post('/unit/post', 'store');
+        Route::post('/unit/update/{id}', 'update');
+        Route::get('/unit/delete/{id}', 'destroy');
+    });
+
+    Route::controller(ProductsController::class)->group(function () {
+        Route::get('/products', 'index');
+        Route::get('/product/details/{id}', 'show');
+        Route::post('/product/post', 'store');
+        Route::post('/product/update/{id}', 'update');
+        Route::get('/product/delete/{id}', 'destroy');
+    });
+
+    Route::controller(CartsController::class)->group(function () {
+        Route::post('/cart/post', 'store');
+        Route::post('/cart/update', 'update');
+        Route::post('/cart/delete', 'destroy');
+    });
+
+    Route::controller(TransactionsController::class)->group(function () {
+        Route::get('/transactions', 'index');
+        Route::get('/transaction/details/{transaction_id}', 'details');
+        Route::get('/transactions/pending', 'show');
+        Route::post('/transactions/checkout', 'store');
+    });
 });
-
-Route::controller(UnitsController::class)->group(function () {
-    Route::get('/units', 'index');
-    Route::post('/units/post', 'store');
-    Route::get('/units/details/{id}', 'show');
-    Route::post('/units/update/{id}', 'update');
-    Route::get('/units/delete/{id}', 'destroy');
-});
-
-Route::controller(ProductsController::class)->group(function () {
-    Route::get('/products', 'index');
-    Route::get('/products/search/{query}', 'search');
-    Route::post('/products/post', 'store');
-    Route::get('/products/list/{category_id}', 'show');
-    Route::post('/products/update/{id}', 'update');
-    Route::get('/products/delete/{id}', 'destroy');
-});
-
-Route::controller(CartsController::class)->group(function () {
-    Route::get('/carts/list/{transaction_id}', 'index');
-    Route::post('/carts/post', 'store');
-    Route::get('/carts/pending', 'show');
-    Route::post('/carts/update', 'update');
-    Route::post('/carts/delete', 'destroy');
-});
-
-Route::controller(TransactionsController::class)->group(function () {
-    Route::get('/transactions', 'index');
-    Route::post('/transactions/checkout', 'store');
-    Route::get('/transactions/pending', 'show');
-    Route::post('/transactions/update/{id}', 'update');
-    Route::post('/transactions/delete/{id}', 'destroy');
+Route::middleware('auth:api')->group(function () {
+    Route::controller(TransactionsController::class)->group(function () {
+        Route::get('/transactions', 'index');
+        Route::get('/transaction/details/{transaction_id}', 'details');
+        Route::get('/transactions/pending', 'show');
+        Route::post('/transactions/checkout', 'store');
+    });
 });
