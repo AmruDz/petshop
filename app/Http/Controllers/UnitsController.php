@@ -8,10 +8,11 @@ use Illuminate\Support\Facades\Validator;
 
 class UnitsController extends Controller
 {
+    //api route
     public function index()
     {
         try {
-            $units = Units::all();
+            $units = Units::orderBy('name', 'asc')->get();
 
             return response()->json([
                 'message' => 'Units retrieved successfully',
@@ -19,92 +20,62 @@ class UnitsController extends Controller
             ], 200);
         } catch (\Throwable $th) {
             return response()->json([
-                'message' => 'An error occurred while displaying category data',
+                'message' => 'An error occurred while displaying unit data',
             ], 500);
         }
     }
 
-    public function store(Request $request)
+    //web route
+    public function indexMaster()
     {
-        $validator = Validator::make($request->all(), [
+        $unit = Units::orderBy('name', 'asc')->get();
+
+        return view('', compact('unit'));
+    }
+    public function createMaster()
+    {
+        return view('', compact('unit'));
+    }
+    public function storeMaster(Request $request)
+    {
+        Validator::make($request->all(), [
             'name' => 'required',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Invalid unit data',
-                'errors' => $validator->errors(),
-            ], 400);
-        }
+        $unit = Units::create($request->all());
 
-        try {
-            $unit = Units::create($request->all());
-
-            return response()->json([
-                'message' => 'Unit created successfully',
-                'data' => $unit,
-            ], 201);
-        } catch (\Throwable $th) {
-            return response()->json([
-                'message' => 'An error occurred while creating an unit',
-            ], 500);
-        }
+        return redirect()->route('unit')->with('success', 'Unit created successfully');
     }
-
-    public function update(Request $request, $id)
+    public function editMaster()
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Invalid unit data',
-                'errors' => $validator->errors(),
-            ], 400);
-        }
-
-        try {
-            $unit = Units::findOrFail($id);
-
-            if (!$unit) {
-                return response()->json([
-                    'message' => 'Unit not found!',
-                ], 404);
-            }
-
-            $unit->update($request->all());
-
-            return response()->json([
-                'message' => 'Unit updated successfully!',
-                'data' => $unit,
-            ], 200);
-        } catch (\Throwable $th) {
-            return response()->json([
-                'message' => 'An error occurred while updating an unit',
-            ], 500);
-        }
+        return view('', compact('unit'));
     }
+    public function updateMaster(Request $request, $id)
+    {
+        Validator::make($request->all(), [
+            'name' => 'required',
+        ])->validate();
 
-    public function destroy($id)
+        $unit = Units::findOrFail($id);
+
+        if (!$unit) {
+            return redirect()->route('unit')->with('error', 'Unit not found');
+        }
+
+        $unit->update($request->all());
+
+        return redirect()->route('unit')->with('success', 'Unit updated successfully');
+    }
+    public function destroyMaster($id)
     {
         $unit = Units::find($id);
 
         if (!$unit) {
-            return response()->json([
-                'message' => 'Unit not found!',
-            ], 404);
+            return redirect()->route('unit')->with('error', 'Unit not found');
         }
 
-        try {
-            $unit->delete();
-            return response()->json([
-                'message' => 'Unit deleted successfully!',
-            ], 200);
-        } catch (\Throwable $th) {
-            return response()->json([
-                'message' => 'An error occurred while deleting an unit',
-            ], 500);
-        }
+        $unit->delete();
+
+        return redirect()->route('unit')->with('success', 'Unit successfully deleted');
     }
 }

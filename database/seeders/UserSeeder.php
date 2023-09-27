@@ -17,7 +17,7 @@ class UserSeeder extends Seeder
     {
         $data = [
             'username' => 'admin',
-            'password' => Hash::make('admin'),
+            'password' => bcrypt('admin'),
             'role' => 'admin'
         ];
 

@@ -17,7 +17,7 @@ class Transactions extends Model
         'discount',
         'total',
     ];
-    
+
     public function cashier()
     {
         return $this->belongsTo(User::class, 'cashier_id');
@@ -25,6 +25,6 @@ class Transactions extends Model
 
     public function carts()
     {
-        return $this->hasMany(Cart::class, 'transaction_id');
+        return $this->hasMany(Carts::class, 'transaction_id');
     }
 }

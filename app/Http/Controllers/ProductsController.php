@@ -9,10 +9,24 @@ use Illuminate\Support\Facades\Validator;
 
 class ProductsController extends Controller
 {
+    public function discPercent($discount)
+    {
+        return 'Disc' . ' ' . $discount . ' ' . '%';
+    }
+    public function discIDR($discount)
+    {
+        return 'Disc' . ' ' . 'Rp' . ' ' . number_format($discount, 0, ',', '.');
+    }
+    public function formatToIDR($price)
+    {
+        return 'Rp' . ' ' . number_format($price, 0, ',', '.');
+    }
+
+    //api controller
     public function index()
     {
         try {
-            $products = Products::orderBy('is_discount_active', 'desc')->get();
+            $products = Products::with('category')->orderBy('is_discount_active', 'desc')->get();
 
             foreach ($products as $change) {
                 $change->price = $this->formatToIDR($change->price);
@@ -39,7 +53,7 @@ class ProductsController extends Controller
     }
     public function show($id)
     {
-        $product = Products::find($id);
+        $product = Products::with('category', 'unit')->find($id);
 
         if (!$product) {
             return response()->json([
@@ -58,7 +72,44 @@ class ProductsController extends Controller
             ], 500);
         }
     }
-    public function store(Request $request)
+
+    //web controller
+    public function indexMaster()
+    {
+            $products = Products::with('category')->orderBy('is_discount_active', 'desc')->get();
+
+            foreach ($products as $change) {
+                $change->price = $this->formatToIDR($change->price);
+                if ($change->is_discount_active == 1) {
+                    if ($change->is_discount_percentage == 1) {
+                        $change->discount = $this->discPercent($change->discount);
+                    } else {
+                        $change->discount = $this->discIDR($change->discount);
+                    }
+                } else {
+                    $change->discount;
+                }
+            }
+
+            return view('', compact('products'));
+    }
+    public function showMaster($id)
+    {
+        $product = Products::with('category', 'unit')->find($id);
+
+        if (!$product) {
+            return response()->json([
+                'message' => 'Product not found!',
+            ], 404);
+        }
+
+            return view('', compact('product'));
+    }
+    public function createMaster()
+    {
+        return view('', compact('product'));
+    }
+    public function storeMaster(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'category_id' => 'required',
@@ -82,17 +133,16 @@ class ProductsController extends Controller
         try {
             $product = Products::create($validator);
 
-            return response()->json([
-                'message' => 'Product created successfully',
-                'data' => $product,
-            ], 201);
+            return redirect()->route('')->with('success', 'Product created successfully');
         } catch (\Throwable $th) {
-            return response()->json([
-                'message' => 'An error occurred while creating a product',
-            ], 500);
+            return redirect()->route('')->with('error', 'An error occured while created product');
         }
     }
-    public function update(Request $request, $id)
+    public function editMaster()
+    {
+        return view('', compact('product'));
+    }
+    public function updateMaster(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
             'category_id' => 'required',
@@ -109,9 +159,7 @@ class ProductsController extends Controller
         $product = Products::find($id);
 
         if (!$product) {
-            return response()->json([
-                'message' => 'Product not found!',
-            ], 404);
+            return redirect()->route('')->with('error', 'Product not found');
         }
 
         if ($request->hasFile('image')) {
@@ -128,24 +176,17 @@ class ProductsController extends Controller
         try {
             $product->update($validator);
 
-            return response()->json([
-                'message' => 'Product updated successfully!',
-                'data' => $product,
-            ], 200);
+            return redirect()->route('')->with('success', 'Product updated successfully');
         } catch (\Throwable $th) {
-            return response()->json([
-                'message' => 'An error occurred while updating product data',
-            ], 500);
+            return redirect()->route('')->json('error', 'An error occurred while updating product data');
         }
     }
-    public function destroy(Request $request, $id)
+    public function destroyMaster(Request $request, $id)
     {
         $product = Products::findOrFail($id);
 
         if (!$product) {
-            return response()->json([
-                'message' => 'Product not found!',
-            ], 404);
+            return redirect()->route('')->with('error', 'Product not found');
         }
 
         if ($product->image) {
@@ -155,25 +196,9 @@ class ProductsController extends Controller
         try {
             $product->delete();
 
-            return response()->json([
-                'message' => 'Product deleted successfully',
-            ], 200);
+            return redirect()->route('')->with('success', 'Product deleted successfully');
         } catch (\Throwable $th) {
-            return response()->json([
-                'message' => 'An error occurred while deleting a product',
-            ], 500);
+            return redirect()->route('')->json('error', 'An error occurred while removing product data');
         }
-    }
-    public function discPercent($discount)
-    {
-        return 'Disc' . ' ' . $discount . ' ' . '%';
-    }
-    public function discIDR($discount)
-    {
-        return 'Disc' . ' ' . 'Rp' . ' ' . number_format($discount, 0, ',', '.');
-    }
-    public function formatToIDR($price)
-    {
-        return 'Rp' . ' ' . number_format($price, 0, ',', '.');
     }
 }

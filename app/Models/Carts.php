@@ -20,11 +20,11 @@ class Carts extends Model
 
     public function transaction()
     {
-        return $this->belongsTo(Transaction::class, 'transaction_id');
+        return $this->belongsTo(Transactions::class, 'transaction_id');
     }
 
     public function product()
     {
-        return $this->belongsTo(Product::class, 'product_id');
+        return $this->belongsTo(Products::class, 'product_id');
     }
 }

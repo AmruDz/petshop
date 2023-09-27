@@ -12,6 +12,74 @@ use Illuminate\Support\Facades\Validator;
 
 class TransactionsController extends Controller
 {
+    public function checkoutTransaction()
+    {
+        $dataCart = Carts::whereNull('transaction_id')->get();
+
+        $subtotal = 0;
+        $discount = 0;
+        $total = 0;
+
+        foreach ($dataCart as $item) {
+            $total += $item->total;
+            $subtotal += $item->sub_total;
+        }
+
+        $discount = $subtotal - $total;
+
+        return [
+            'subtotal' => $subtotal,
+            'discount' => $discount,
+            'total' => $total,
+        ];
+    }
+    public function calculatePendingTransactions()
+    {
+        $dataCart = Carts::whereNull('transaction_id')->get();
+
+        $subtotal = 0;
+        $discount = 0;
+        $total = 0;
+
+        foreach ($dataCart as $item) {
+            $total += $item->total;
+            $subtotal += $item->sub_total;
+        }
+
+        $discount = $subtotal - $total;
+
+        return [
+            'subtotal' => $subtotal = $this->formatToIDR($subtotal),
+            'discount' => $discount = $this->formatToIDR($discount),
+            'total' => $total = $this->formatToIDR($total),
+        ];
+    }
+    public function orderNumber($orderNumber)
+    {
+        if ($orderNumber < 10) {
+            return '#' . '0' . '0' . '0' . '0' . '0' . $orderNumber;
+        } elseif ($orderNumber >= 10) {
+            return '#' . '0' . '0' . '0' . '0' . $orderNumber;
+        } elseif ($orderNumber >= 100) {
+            return '#' . '0' . '0' . '0' . $orderNumber;
+        } elseif ($orderNumber >= 1000) {
+            return '#' . '0' . '0' . $orderNumber;
+        } elseif ($orderNumber >= 10000) {
+            return '#' . '0' . $orderNumber;
+        } else {
+            return '#' . $orderNumber;
+        }
+    }
+    public function formatToIDR($total)
+    {
+        return 'Rp' . ' ' . number_format($total, 0, ',', '.');
+    }
+    public function formatPercent($discount)
+    {
+        return $discount . ' ' . '%';
+    }
+
+    //api controller
     public function index()
     {
         $headerDate = Transactions::select(
@@ -26,7 +94,7 @@ class TransactionsController extends Controller
             foreach ($headerDate as $date) {
                 $dateFormatted = Carbon::parse($date->date)->format('l, d F Y');
 
-                $transactions = Transactions::whereDate('date', $date->date)->orderBy('id', 'desc')->get();
+                $transactions = Transactions::with('cashier')->whereDate('date', $date->date)->orderBy('id', 'desc')->get();
                 $total = $transactions->sum('total');
                 $totalFormatted = $this->formatToIDR($total);
                 $data = [
@@ -49,18 +117,9 @@ class TransactionsController extends Controller
     }
     public function details($transaction_id)
     {
-        $carts = Carts::where('transaction_id', $transaction_id)->get();
-        $transactionData = Transactions::where('id', $transaction_id)->get();
+        $carts = Carts::with('transaction')->where('transaction_id', $transaction_id)->get();
 
         try {
-            foreach ($transactionData as $data) {
-                $dateFormatted = Carbon::parse($data->date)->format('l, d F Y');
-                $data->date = $dateFormatted;
-                $data->sub_total = $this->formatToIDR($data->sub_total);
-                $data->discount = $this->formatToIDR($data->discount);
-                $data->total = $this->formatToIDR($data->total);
-            }
-
             foreach ($carts as $format) {
                 $format->price = $this->formatToIDR($format->price);
                 $format->sub_total = $this->formatToIDR($format->sub_total);
@@ -75,7 +134,6 @@ class TransactionsController extends Controller
             }
 
             return response()->json([
-                'transaction' => $transactionData,
                 'details' => $carts,
             ], 200);
         } catch (\Throwable $th) {
@@ -84,18 +142,18 @@ class TransactionsController extends Controller
             ], 500);
         }
     }
-    public function show()
+    public function pending()
     {
-        $pendingCart = Carts::where('transaction_id', null)->get();
+        $pendingCart = Carts::with('product')->where('transaction_id', null)->get();
         $totalTransactions = Transactions::count();
 
         try {
-            $orderNumber = $totalTransactions + 2;
+            $orderNumber = $totalTransactions + 1;
             $toBePaid = $this->calculatePendingTransactions();
 
             return response()->json([
                 'order_number' => $orderNumber = $this->orderNumber($orderNumber),
-                'to be paid' => $toBePaid,
+                'to_be_paid' => $toBePaid,
                 'data' => $pendingCart,
             ], 200);
         } catch (\Throwable $th) {
@@ -167,70 +225,30 @@ class TransactionsController extends Controller
             ], 500);
         }
     }
-    public function checkoutTransaction()
+
+    //web controller
+    public function indexMaster()
     {
-        $dataCart = Carts::whereNull('transaction_id')->get();
+        $transaction = Transactions::orderBy('id', 'desc')->get();
 
-        $subtotal = 0;
-        $discount = 0;
-        $total = 0;
+        return view('', compact('transaction'));
+    }
+    public function detailsMaster($id)
+    {
+        $transaction = Transactions::with('cart')->findOrFail($id);
 
-        foreach ($dataCart as $item) {
-            $total += $item->total;
-            $subtotal += $item->sub_total;
+        return view('', compact('transaction'));
+    }
+    public function destroyMaster($id)
+    {
+        $transaction = Transactions::findOrFail($id);
+
+        if (!$transaction) {
+            return redirect()->route('')->with('error', 'Product not found');
+        } else{
+            $transaction->delete();
+
+            return redirect()->route('')->with('success', 'Product delete successfully');
         }
-
-        $discount = $subtotal - $total;
-
-        return [
-            'subtotal' => $subtotal,
-            'discount' => $discount,
-            'total' => $total,
-        ];
-    }
-    public function calculatePendingTransactions()
-    {
-        $dataCart = Carts::whereNull('transaction_id')->get();
-
-        $subtotal = 0;
-        $discount = 0;
-        $total = 0;
-
-        foreach ($dataCart as $item) {
-            $total += $item->total;
-            $subtotal += $item->sub_total;
-        }
-
-        $discount = $subtotal - $total;
-
-        return [
-            'subtotal' => $subtotal = $this->formatToIDR($subtotal),
-            'discount' => $discount = $this->formatToIDR($discount),
-            'total' => $total = $this->formatToIDR($total),
-        ];
-    }
-    public function orderNumber($orderNumber)
-    {
-        if ($orderNumber < 10) {
-            return '#' . '0' . '0' . '0' . '0' . '0' . $orderNumber;
-        } elseif ($orderNumber >= 10) {
-            return '#' . '0' . '0' . '0' . '0' . $orderNumber;
-        } elseif ($orderNumber >= 100) {
-            return '#' . '0' . '0' . '0' . $orderNumber;
-        } elseif ($orderNumber >= 1000) {
-            return '#' . '0' . '0' . $orderNumber;
-        } elseif ($orderNumber >= 10000) {
-            return '#' . '0' . $orderNumber;
-        } else {
-            return '#' . $orderNumber;
-        }
-    }
-    public function formatToIDR($total)
-    {
-        return 'Rp' . ' ' . number_format($total, 0, ',', '.');
-    }
-    public function formatPercent($discount)
-    {
-        return $discount . ' ' . '%';
     }
 }

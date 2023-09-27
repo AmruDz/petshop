@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\API;
 
-use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
@@ -86,7 +86,7 @@ class AuthController extends Controller
     public function update(Request $request)
     {
         $validatedData = $request->validate([
-            'username' => 'nullable|string|min:4',
+            'username' => 'nullable|string|min:4|unique:users,username',
             'password' => 'nullable|string|min:6',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,jfif|max:2048',
         ]);
@@ -98,7 +98,7 @@ class AuthController extends Controller
         }
 
         if ($request->has('password')) {
-            $user->password = bcrypt($validatedData['password']);
+            $user->password = $validatedData['password'];
         }
 
         if ($request->hasFile('avatar')) {
@@ -106,13 +106,35 @@ class AuthController extends Controller
             $fileName = uniqid() . '.' . $file->getClientOriginalExtension();
             Storage::disk('avatars')->putFileAs('', $file, $fileName);
             $validatedData['avatar'] = $fileName;
+
+            if ($user->avatar) {
+                Storage::disk('avatars')->delete($user->avatar);
+            }
         }
 
-        $user->update($validatedData);
+        $user->update([
+            'username' => $validatedData['username'],
+            'password' => bcrypt($validatedData['password']),
+            'avatar' => $validatedData['avatar'],
+        ]);
 
         return response()->json([
             'message' => 'Profile updated successfully',
             'data' => $user,
         ], 200);
+    }
+
+    //web controller
+    public function indexMaster()
+    {
+
+    }
+    public function createMaster()
+    {
+        return view('', compact('user'));
+    }
+    public function editMaster()
+    {
+        return view('', compact('user'));
     }
 }

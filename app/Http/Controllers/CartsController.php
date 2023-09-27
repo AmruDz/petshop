@@ -9,6 +9,14 @@ use Illuminate\Support\Facades\Validator;
 
 class CartsController extends Controller
 {
+    public function calculated($subtotal, $discount)
+    {
+        if ($discount == 0) {
+            return $subtotal;
+        } else {
+            return $subtotal - $discount;
+        }
+    }
     public function store(Request $request)
     {
         Validator::make($request->all(), [
@@ -23,9 +31,17 @@ class CartsController extends Controller
         $price = $dataProduct->price;
         $isDiscountActive = $dataProduct->is_discount_active;
         $isDiscountPercentage = $dataProduct->is_discount_percentage;
-        $discount = $dataProduct->discount;
         $subtotal = $qty * $price;
-        $total = $this->calculated($subtotal, $discount, $isDiscountActive, $isDiscountPercentage);
+        if ($isDiscountActive == 1) {
+            if ($isDiscountPercentage == 1) {
+                $dataProduct->discount = $price * ($dataProduct->discount / 100);
+            } else {
+                $dataProduct->discount;
+            }
+        }
+        $discount = $dataProduct->discount * $qty;
+
+        $total = $this->calculated($subtotal, $discount);
 
         try {
             if ($dataProduct->qty >= $qty) {
@@ -67,9 +83,16 @@ class CartsController extends Controller
         $price = $dataProduct->price;
         $isDiscountActive = $dataProduct->is_discount_active;
         $isDiscountPercentage = $dataProduct->is_discount_percentage;
-        $discount = $dataProduct->discount;
         $subtotal = $qty * $price;
-        $total = $this->calculated($subtotal, $discount, $isDiscountActive, $isDiscountPercentage);
+        if ($isDiscountActive == 1) {
+            if ($isDiscountPercentage == 1) {
+                $dataProduct->discount = $price * ($dataProduct->discount / 100);
+            } else {
+                $dataProduct->discount;
+            }
+        }
+        $discount = $dataProduct->discount * $qty;
+        $total = $this->calculated($subtotal, $discount);
 
         try {
             if ($dataProduct->qty >= $qty) {
@@ -134,18 +157,6 @@ class CartsController extends Controller
             return response()->json([
                 'message' => 'An error occurred while removing the item from the cart.',
             ], 500);
-        }
-    }
-    public function calculated($subtotal, $discount, $isDiscountActive, $isDiscountPercentage)
-    {
-        if ($isDiscountActive) {
-            if ($isDiscountPercentage) {
-                return $subtotal - ($subtotal * $discount / 100);
-            } else {
-                return $subtotal - $discount;
-            }
-        } else {
-            return $subtotal;
         }
     }
 }
