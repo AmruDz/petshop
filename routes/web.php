@@ -5,24 +5,14 @@ use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\CategoriesController;
 use App\Http\Controllers\UnitsController;
 use App\Http\Controllers\ProductsController;
-use App\Http\Controllers\CartsController;
 use App\Http\Controllers\TransactionsController;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
-*/
-Route::post('/petshop/login', [AuthController::class, 'login']);
+Route::post('/petshop/login-Master', [AuthController::class, 'loginMaster'])->name('login');
 
 // Route::middleware('auth:api')->group(function () {
-    Route::post('/petshop/profile-edit/post', [AuthController::class, 'update']);
-    Route::post('/petshop/logout', [AuthController::class, 'logout']);
+    Route::post('/petshop/create-member/post', [AuthController::class, 'registMember']);
+    Route::post('/petshop/profile-edit/post', [AuthController::class, 'updateMember']);
+    Route::post('/petshop/logout', [AuthController::class, 'logoutMaster'])->name('logout');
 
     Route::controller(CategoriesController::class)->prefix('categories')->group(function () {
         Route::get('', 'indexMaster')->name('categories');

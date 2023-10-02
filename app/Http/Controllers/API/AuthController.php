@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Validator;
 
 class AuthController extends Controller
 {
@@ -30,6 +32,12 @@ class AuthController extends Controller
 
         if (!$token = auth('api')->attempt($credentials)) {
             return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $user = auth('api')->user();
+        if ($user->role !== 'cashier') {
+            auth('api')->logout();
+            return response()->json(['error' => 'Unauthorized, Please change account to another role'], 401);
         }
 
         return $this->respondWithToken($token);
@@ -85,11 +93,11 @@ class AuthController extends Controller
 
     public function update(Request $request)
     {
-        $validatedData = $request->validate([
+        $validatedData = Validator::make($request->all(), [
             'username' => 'nullable|string|min:4|unique:users,username',
             'password' => 'nullable|string|min:6',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,jfif|max:2048',
-        ]);
+        ])->validate();
 
         $user = auth()->user();
 
@@ -125,16 +133,110 @@ class AuthController extends Controller
     }
 
     //web controller
+    public function loginMaster()
+    {
+        $credentials = request(['username', 'password']);
+
+        if (Auth::attempt($credentials)) {
+
+            $user = Auth::user();
+
+            if ($user->role === 'admin') {
+                return redirect()->route('')->with('success', '');
+            } else {
+                return back()->with('error', 'Unauthorized access');
+            }
+        }
+
+        return back()->with('error', 'Login failed. Please check your credentials.');
+    }
+    public function logoutMaster()
+    {
+        Auth::logout();
+
+        return redirect()->route('')->with('success', 'Successfully logged out');
+    }
     public function indexMaster()
     {
+        $users = User::orderBy('username', 'asc')->get();
 
+        return view('' ,compact('users'));
     }
     public function createMaster()
     {
         return view('', compact('user'));
     }
-    public function editMaster()
+    public function registMember(Request $request)
     {
+        $validatedData = Validator::make($request->all(),[
+            'username' => 'required|string|min:4|unique:users,username',
+            'password' => 'required|string|min:6',
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,jfif|max:2048',
+        ])->validate();
+
+        if ($request->hasFile('avatar')) {
+            $file = $request->file('avatar');
+            $fileName = uniqid() . '.' . $file->getClientOriginalExtension();
+            Storage::disk('avatars')->putFileAs('', $file, $fileName);
+            $validatedData['avatar'] = $fileName;
+        }
+
+        $user = User::create([
+            'username' => $validatedData['username'],
+            'password' => bcrypt($validatedData['password']),
+            'avatar' => $validatedData['avatar'],
+        ]);
+
+        return redirect()->route('')->with('success', '');
+    }
+    public function editMember($id)
+    {
+        $user = User::findOrFail($id);
+        if (!$user) {
+            return redirect()->route('')->with('error', '');
+        }
         return view('', compact('user'));
+    }
+    public function updateMember(Request $request, $id)
+    {
+        $validatedData = Validator::make($request->all(),[
+            'username' => 'required|string|min:4|unique:users,username',
+            'password' => 'required|string|min:6',
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,jfif|max:2048',
+        ])->validate();
+
+        $user = User::findOrFail($id);
+
+        if ($request->hasFile('avatar')) {
+            $file = $request->file('avatar');
+            $fileName = uniqid() . '.' . $file->getClientOriginalExtension();
+            Storage::disk('avatars')->putFileAs('', $file, $fileName);
+            $validatedData['avatar'] = $fileName;
+
+            if ($user->avatar) {
+                Storage::disk('avatars')->delete($user->avatar);
+            }
+        }
+
+        $user = User::update([
+            'username' => $validatedData['username'],
+            'password' => bcrypt($validatedData['password']),
+            'avatar' => $validatedData['avatar'],
+        ]);
+
+        return redirect()->route('')->with('success', '');
+    }
+    public function destroyMember($id)
+    {
+        $user = User::findOrFail($id);
+        if (!$user) {
+            return redirect()->route('')->with('error', '');
+        } else {
+            if ($user->avatar) {
+                Storage::disk('avatars')->delete($user->avatar);
+            }
+            $user->delete();
+            return redirect()->route('')->with('success', '');
+        }
     }
 }

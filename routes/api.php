@@ -21,8 +21,11 @@ use App\Http\Controllers\TransactionsController;
 Route::post('/petshop/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:api')->group(function () {
-    Route::post('/petshop/profile-edit/post', [AuthController::class, 'update']);
-    Route::post('/petshop/logout', [AuthController::class, 'logout']);
+    Route::controller(AuthController::class)->prefix('profile')->group(function () {
+        Route::get('', 'me');
+        Route::post('/edit/post', 'update');
+        Route::post('/logout', 'logout');
+    });
 
     Route::get('/categories', [CategoriesController::class, 'index']);
     Route::get('/units', [UnitsController::class, 'index']);
